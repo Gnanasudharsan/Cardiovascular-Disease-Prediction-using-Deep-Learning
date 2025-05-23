@@ -203,4 +203,143 @@ class Config:
                 'learning_rate': self.LEARNING_RATE
             },
             'catboost_params': {
-                'iterations': self.CAT
+                'iterations': self.CATBOOST_ITERATIONS,
+                'learning_rate': self.CATBOOST_LEARNING_RATE,
+                'depth': self.CATBOOST_DEPTH,
+                'early_stopping_rounds': self.CATBOOST_EARLY_STOPPING,
+                'random_seed': self.RANDOM_STATE
+            },
+            'ensemble_params': {
+                'weights': self.ENSEMBLE_WEIGHTS,
+                'threshold': self.CLASSIFICATION_THRESHOLD
+            }
+        }
+    
+    def get_training_params(self):
+        """Get training-specific parameters"""
+        return {
+            'epochs': self.EPOCHS,
+            'batch_size': self.BATCH_SIZE,
+            'validation_size': self.VALIDATION_SIZE,
+            'early_stopping_patience': self.EARLY_STOPPING_PATIENCE,
+            'reduce_lr_patience': self.REDUCE_LR_PATIENCE,
+            'reduce_lr_factor': self.REDUCE_LR_FACTOR
+        }
+    
+    def get_data_params(self):
+        """Get data processing parameters"""
+        return {
+            'test_size': self.TEST_SIZE,
+            'random_state': self.RANDOM_STATE,
+            'shap_threshold': self.SHAP_THRESHOLD,
+            'use_interaction_terms': self.USE_INTERACTION_TERMS,
+            'feature_scaling': self.FEATURE_SCALING,
+            'handle_outliers': self.HANDLE_OUTLIERS,
+            'outlier_method': self.OUTLIER_METHOD
+        }
+    
+    def setup_tensorflow(self):
+        """Setup TensorFlow configuration"""
+        import tensorflow as tf
+        
+        if self.USE_GPU:
+            # Configure GPU memory growth
+            gpus = tf.config.experimental.list_physical_devices('GPU')
+            if gpus:
+                try:
+                    for gpu in gpus:
+                        tf.config.experimental.set_memory_growth(gpu, self.GPU_MEMORY_GROWTH)
+                except RuntimeError as e:
+                    print(f"GPU configuration error: {e}")
+        
+        # Mixed precision training
+        if self.MIXED_PRECISION:
+            tf.keras.mixed_precision.set_global_policy('mixed_float16')
+        
+        # Set random seeds for reproducibility
+        if self.SET_RANDOM_SEEDS:
+            tf.random.set_seed(self.RANDOM_STATE)
+            import numpy as np
+            np.random.seed(self.RANDOM_STATE)
+            import random
+            random.seed(self.RANDOM_STATE)
+    
+    def validate_config(self):
+        """Validate configuration parameters"""
+        errors = []
+        
+        # Check data paths
+        if not os.path.exists(os.path.dirname(self.DATA_PATH)):
+            errors.append(f"Data directory does not exist: {os.path.dirname(self.DATA_PATH)}")
+        
+        # Check parameter ranges
+        if not 0 < self.TEST_SIZE < 1:
+            errors.append("TEST_SIZE must be between 0 and 1")
+        
+        if not 0 < self.VALIDATION_SIZE < 1:
+            errors.append("VALIDATION_SIZE must be between 0 and 1")
+        
+        if self.LEARNING_RATE <= 0:
+            errors.append("LEARNING_RATE must be positive")
+        
+        if self.EPOCHS <= 0:
+            errors.append("EPOCHS must be positive")
+        
+        if self.BATCH_SIZE <= 0:
+            errors.append("BATCH_SIZE must be positive")
+        
+        # Check ensemble weights
+        if len(self.ENSEMBLE_WEIGHTS) != 2:
+            errors.append("ENSEMBLE_WEIGHTS must have exactly 2 values")
+        
+        if abs(sum(self.ENSEMBLE_WEIGHTS) - 1.0) > 1e-6:
+            errors.append("ENSEMBLE_WEIGHTS must sum to 1.0")
+        
+        if errors:
+            raise ValueError("Configuration validation failed:\n" + "\n".join(errors))
+        
+        return True
+    
+    def __str__(self):
+        """String representation of configuration"""
+        config_str = "=== CVD Prediction Configuration ===\n"
+        config_str += f"Data Path: {self.DATA_PATH}\n"
+        config_str += f"Test Size: {self.TEST_SIZE}\n"
+        config_str += f"Random State: {self.RANDOM_STATE}\n"
+        config_str += f"Epochs: {self.EPOCHS}\n"
+        config_str += f"Batch Size: {self.BATCH_SIZE}\n"
+        config_str += f"Learning Rate: {self.LEARNING_RATE}\n"
+        config_str += f"Ensemble Weights: {self.ENSEMBLE_WEIGHTS}\n"
+        config_str += f"Target Accuracy: {self.TARGET_ACCURACY}\n"
+        return config_str
+
+# Default configuration instance
+DEFAULT_CONFIG = Config()
+
+if __name__ == "__main__":
+    # Test configuration
+    config = Config()
+    
+    print("Default Configuration:")
+    print(config)
+    
+    # Validate configuration
+    try:
+        config.validate_config()
+        print("\nConfiguration validation: PASSED")
+    except ValueError as e:
+        print(f"\nConfiguration validation: FAILED")
+        print(f"Errors: {e}")
+    
+    # Test saving and loading
+    config_path = "test_config.yaml"
+    config.save_to_yaml(config_path)
+    print(f"\nConfiguration saved to {config_path}")
+    
+    # Load configuration
+    new_config = Config(config_path)
+    print("\nConfiguration loaded successfully")
+    
+    # Clean up
+    if os.path.exists(config_path):
+        os.remove(config_path)
