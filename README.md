@@ -27,64 +27,6 @@ The proposed framework combines:
 ![image](https://github.com/user-attachments/assets/5c03b601-4a95-48dc-b66f-8ef3dc31d128)
 
 
-## 📁 Repository Structure
-
-```
-cardiovascular-disease-prediction/
-├── data/
-│   ├── raw/
-│   │   └── cardiovascular_disease_dataset.csv
-│   ├── processed/
-│   │   ├── train_data.csv
-│   │   ├── test_data.csv
-│   │   └── validation_data.csv
-│   └── README.md
-├── src/
-│   ├── __init__.py
-│   ├── data_preprocessing.py
-│   ├── feature_selection.py
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── bdlstm_model.py
-│   │   ├── catboost_model.py
-│   │   └── ensemble_model.py
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   ├── evaluation_metrics.py
-│   │   ├── visualization.py
-│   │   └── config.py
-│   └── training.py
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_preprocessing_analysis.ipynb
-│   ├── 03_model_training.ipynb
-│   ├── 04_evaluation_comparison.ipynb
-│   └── 05_shap_analysis.ipynb
-├── models/
-│   ├── saved_models/
-│   │   ├── bdlstm_model.h5
-│   │   ├── catboost_model.pkl
-│   │   └── ensemble_model.pkl
-│   └── model_configs/
-├── results/
-│   ├── figures/
-│   ├── performance_metrics.json
-│   └── comparison_results.csv
-├── tests/
-│   ├── __init__.py
-│   ├── test_preprocessing.py
-│   ├── test_models.py
-│   └── test_utils.py
-├── requirements.txt
-├── environment.yml
-├── setup.py
-├── Dockerfile
-├── .gitignore
-├── LICENSE
-├── README.md
-├── CONTRIBUTING.md
-└── main.py
-```
 
 ## 🚀 Quick Start
 
