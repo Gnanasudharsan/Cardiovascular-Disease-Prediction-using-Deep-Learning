@@ -383,4 +383,386 @@ class ResultVisualizer:
         
         # 4. Recall
         if 'recall' in history.history:
-            axes[1, 1].plot(history.history['
+            axes[1, 1].plot(history.history['recall'], label='Training Recall', color=self.colors['success'])
+            if 'val_recall' in history.history:
+                axes[1, 1].plot(history.history['val_recall'], label='Validation Recall', color=self.colors['secondary'])
+            axes[1, 1].set_title('Model Recall')
+            axes[1, 1].set_xlabel('Epoch')
+            axes[1, 1].set_ylabel('Recall')
+            axes[1, 1].legend()
+            axes[1, 1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
+            logger.info(f"Training history plot saved to {save_path}")
+        
+        plt.show()
+    
+    def plot_learning_curves(self, train_sizes, train_scores, val_scores, save_path=None):
+        """
+        Plot learning curves to analyze model performance vs training data size
+        """
+        train_mean = np.mean(train_scores, axis=1)
+        train_std = np.std(train_scores, axis=1)
+        val_mean = np.mean(val_scores, axis=1)
+        val_std = np.std(val_scores, axis=1)
+        
+        plt.figure(figsize=(12, 8))
+        
+        plt.plot(train_sizes, train_mean, 'o-', color=self.colors['primary'], 
+                label='Training Score', linewidth=2, markersize=8)
+        plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std,
+                        alpha=0.1, color=self.colors['primary'])
+        
+        plt.plot(train_sizes, val_mean, 'o-', color=self.colors['danger'],
+                label='Cross-validation Score', linewidth=2, markersize=8)
+        plt.fill_between(train_sizes, val_mean - val_std, val_mean + val_std,
+                        alpha=0.1, color=self.colors['danger'])
+        
+        plt.xlabel('Training Set Size')
+        plt.ylabel('Score')
+        plt.title('Learning Curves')
+        plt.legend(loc='best')
+        plt.grid(True, alpha=0.3)
+        
+        # Add annotations for final scores
+        plt.annotate(f'Final Training: {train_mean[-1]:.3f}±{train_std[-1]:.3f}',
+                    xy=(train_sizes[-1], train_mean[-1]), xytext=(10, 10),
+                    textcoords='offset points', fontsize=10,
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor=self.colors['primary'], alpha=0.2))
+        
+        plt.annotate(f'Final Validation: {val_mean[-1]:.3f}±{val_std[-1]:.3f}',
+                    xy=(train_sizes[-1], val_mean[-1]), xytext=(10, -25),
+                    textcoords='offset points', fontsize=10,
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor=self.colors['danger'], alpha=0.2))
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
+            logger.info(f"Learning curves saved to {save_path}")
+        
+        plt.show()
+    
+    def create_interactive_dashboard(self, results_df, save_path=None):
+        """
+        Create interactive dashboard using Plotly
+        """
+        # Create subplots
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=('Performance Metrics', 'ROC-AUC vs Execution Time',
+                           'Precision vs Recall', 'Model Comparison Radar'),
+            specs=[[{"type": "bar"}, {"type": "scatter"}],
+                   [{"type": "scatter"}, {"type": "polar"}]]
+        )
+        
+        # 1. Performance metrics bar chart
+        metrics = ['accuracy', 'precision', 'recall', 'f1_score']
+        for metric in metrics:
+            if metric in results_df.columns:
+                fig.add_trace(
+                    go.Bar(name=metric.capitalize(), 
+                          x=results_df['model'] if 'model' in results_df.columns else results_df.index,
+                          y=results_df[metric],
+                          hovertemplate=f'{metric.capitalize()}: %{{y:.3f}}<extra></extra>'),
+                    row=1, col=1
+                )
+        
+        # 2. ROC-AUC vs Execution Time scatter
+        if 'roc_auc' in results_df.columns and 'execution_time' in results_df.columns:
+            fig.add_trace(
+                go.Scatter(x=results_df['execution_time'], y=results_df['roc_auc'],
+                          mode='markers+text',
+                          text=results_df['model'] if 'model' in results_df.columns else results_df.index,
+                          textposition="top center",
+                          marker=dict(size=12, color=self.colors['primary']),
+                          name='Models',
+                          hovertemplate='Model: %{text}<br>Time: %{x:.2f}s<br>ROC-AUC: %{y:.3f}<extra></extra>'),
+                row=1, col=2
+            )
+        
+        # 3. Precision vs Recall scatter
+        if 'precision' in results_df.columns and 'recall' in results_df.columns:
+            fig.add_trace(
+                go.Scatter(x=results_df['recall'], y=results_df['precision'],
+                          mode='markers+text',
+                          text=results_df['model'] if 'model' in results_df.columns else results_df.index,
+                          textposition="top center",
+                          marker=dict(size=12, color=self.colors['success']),
+                          name='Models',
+                          hovertemplate='Model: %{text}<br>Recall: %{x:.3f}<br>Precision: %{y:.3f}<extra></extra>'),
+                row=2, col=1
+            )
+        
+        # 4. Radar chart for model comparison
+        radar_metrics = ['accuracy', 'precision', 'recall', 'f1_score']
+        available_radar_metrics = [m for m in radar_metrics if m in results_df.columns]
+        
+        if len(available_radar_metrics) >= 3:
+            for idx, (_, row) in enumerate(results_df.iterrows()):
+                model_name = row['model'] if 'model' in row else f'Model {idx+1}'
+                values = [row[metric] for metric in available_radar_metrics]
+                
+                fig.add_trace(
+                    go.Scatterpolar(r=values + [values[0]],  # Close the polygon
+                                  theta=available_radar_metrics + [available_radar_metrics[0]],
+                                  fill='toself',
+                                  name=model_name,
+                                  hovertemplate='%{theta}: %{r:.3f}<extra></extra>'),
+                    row=2, col=2
+                )
+        
+        # Update layout
+        fig.update_layout(
+            title_text="Cardiovascular Disease Prediction - Model Performance Dashboard",
+            title_x=0.5,
+            height=800,
+            showlegend=True,
+            hovermode='closest'
+        )
+        
+        # Update axes labels
+        fig.update_xaxes(title_text="Models", row=1, col=1)
+        fig.update_yaxes(title_text="Score", row=1, col=1)
+        fig.update_xaxes(title_text="Execution Time (s)", row=1, col=2)
+        fig.update_yaxes(title_text="ROC-AUC", row=1, col=2)
+        fig.update_xaxes(title_text="Recall", row=2, col=1)
+        fig.update_yaxes(title_text="Precision", row=2, col=1)
+        
+        if save_path:
+            fig.write_html(save_path)
+            logger.info(f"Interactive dashboard saved to {save_path}")
+        
+        fig.show()
+        
+        return fig
+    
+    def plot_clinical_decision_analysis(self, y_true, y_pred_proba, save_path=None):
+        """
+        Plot clinical decision analysis including cost-benefit analysis
+        """
+        from sklearn.metrics import precision_recall_curve, roc_curve
+        
+        # Handle different probability formats
+        if len(y_pred_proba.shape) > 1 and y_pred_proba.shape[1] > 1:
+            proba = y_pred_proba[:, 1]
+        else:
+            proba = y_pred_proba
+        
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # 1. Precision-Recall Curve
+        precision, recall, pr_thresholds = precision_recall_curve(y_true, proba)
+        axes[0, 0].plot(recall, precision, color=self.colors['primary'], linewidth=2)
+        axes[0, 0].set_xlabel('Recall (Sensitivity)')
+        axes[0, 0].set_ylabel('Precision (PPV)')
+        axes[0, 0].set_title('Precision-Recall Curve')
+        axes[0, 0].grid(True, alpha=0.3)
+        
+        # Add F1-score contours
+        f_scores = np.linspace(0.2, 0.8, num=4)
+        for f_score in f_scores:
+            x = np.linspace(0.01, 1)
+            y = f_score * x / (2 * x - f_score)
+            axes[0, 0].plot(x[y >= 0], y[y >= 0], color='gray', alpha=0.5)
+            axes[0, 0].annotate(f'F1={f_score:0.1f}', xy=(0.9, y[45] + 0.02))
+        
+        # 2. Sensitivity vs Specificity
+        fpr, tpr, roc_thresholds = roc_curve(y_true, proba)
+        specificity = 1 - fpr
+        
+        axes[0, 1].plot(roc_thresholds, tpr, label='Sensitivity', color=self.colors['success'])
+        axes[0, 1].plot(roc_thresholds, specificity, label='Specificity', color=self.colors['danger'])
+        axes[0, 1].set_xlabel('Threshold')
+        axes[0, 1].set_ylabel('Rate')
+        axes[0, 1].set_title('Sensitivity vs Specificity by Threshold')
+        axes[0, 1].legend()
+        axes[0, 1].grid(True, alpha=0.3)
+        
+        # Find optimal threshold (Youden's index)
+        optimal_idx = np.argmax(tpr - fpr)
+        optimal_threshold = roc_thresholds[optimal_idx]
+        axes[0, 1].axvline(optimal_threshold, color='black', linestyle='--',
+                          label=f'Optimal: {optimal_threshold:.3f}')
+        axes[0, 1].legend()
+        
+        # 3. Cost-Benefit Analysis
+        # Simulate different cost scenarios
+        cost_fp = 1  # Cost of false positive (unnecessary treatment)
+        cost_fn = 10  # Cost of false negative (missed diagnosis)
+        
+        thresholds = np.linspace(0, 1, 100)
+        costs = []
+        
+        for threshold in thresholds:
+            y_pred_thresh = (proba >= threshold).astype(int)
+            tn = np.sum((y_true == 0) & (y_pred_thresh == 0))
+            fp = np.sum((y_true == 0) & (y_pred_thresh == 1))
+            fn = np.sum((y_true == 1) & (y_pred_thresh == 0))
+            tp = np.sum((y_true == 1) & (y_pred_thresh == 1))
+            
+            total_cost = (fp * cost_fp) + (fn * cost_fn)
+            costs.append(total_cost)
+        
+        axes[1, 0].plot(thresholds, costs, color=self.colors['primary'], linewidth=2)
+        min_cost_idx = np.argmin(costs)
+        min_cost_threshold = thresholds[min_cost_idx]
+        
+        axes[1, 0].axvline(min_cost_threshold, color='red', linestyle='--',
+                          label=f'Min Cost Threshold: {min_cost_threshold:.3f}')
+        axes[1, 0].set_xlabel('Decision Threshold')
+        axes[1, 0].set_ylabel('Total Cost')
+        axes[1, 0].set_title(f'Cost Analysis (FP Cost={cost_fp}, FN Cost={cost_fn})')
+        axes[1, 0].legend()
+        axes[1, 0].grid(True, alpha=0.3)
+        
+        # 4. Net Benefit Analysis
+        # Calculate net benefit for different thresholds
+        prevalence = np.mean(y_true)
+        net_benefits = []
+        
+        for threshold in thresholds:
+            y_pred_thresh = (proba >= threshold).astype(int)
+            tp = np.sum((y_true == 1) & (y_pred_thresh == 1))
+            fp = np.sum((y_true == 0) & (y_pred_thresh == 1))
+            
+            # Net benefit = (TP - FP * pt/(1-pt)) / N
+            # where pt is probability threshold
+            if threshold > 0 and threshold < 1:
+                net_benefit = (tp - fp * (threshold / (1 - threshold))) / len(y_true)
+            else:
+                net_benefit = 0
+            net_benefits.append(net_benefit)
+        
+        axes[1, 1].plot(thresholds, net_benefits, color=self.colors['primary'], 
+                       linewidth=2, label='Model')
+        
+        # Add "treat all" and "treat none" strategies
+        treat_all_benefit = prevalence - (1 - prevalence) * (thresholds / (1 - thresholds + 1e-10))
+        treat_none_benefit = np.zeros_like(thresholds)
+        
+        axes[1, 1].plot(thresholds, treat_all_benefit, '--', color=self.colors['danger'],
+                       label='Treat All')
+        axes[1, 1].plot(thresholds, treat_none_benefit, '--', color=self.colors['secondary'],
+                       label='Treat None')
+        
+        axes[1, 1].set_xlabel('Threshold Probability')
+        axes[1, 1].set_ylabel('Net Benefit')
+        axes[1, 1].set_title('Decision Curve Analysis')
+        axes[1, 1].legend()
+        axes[1, 1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
+            logger.info(f"Clinical decision analysis saved to {save_path}")
+        
+        plt.show()
+        
+        return optimal_threshold, min_cost_threshold
+    
+    def save_all_figures(self, base_path='results/figures/'):
+        """
+        Save all generated figures to specified directory
+        """
+        os.makedirs(base_path, exist_ok=True)
+        logger.info(f"All figures will be saved to {base_path}")
+        return base_path
+
+def create_publication_plots(data, results, save_dir='results/figures/'):
+    """
+    Create all plots for publication as shown in the research paper
+    """
+    visualizer = ResultVisualizer()
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # 1. Data distribution plots
+    if data is not None:
+        visualizer.plot_data_distribution(
+            data, 
+            save_path=os.path.join(save_dir, 'data_distribution.png')
+        )
+    
+    # 2. Model comparison plots
+    if results is not None:
+        visualizer.plot_model_comparison(
+            results,
+            save_path=os.path.join(save_dir, 'model_comparison.png')
+        )
+    
+    logger.info(f"Publication plots created in {save_dir}")
+
+if __name__ == "__main__":
+    # Test the visualization module
+    import pandas as pd
+    from sklearn.datasets import make_classification
+    from sklearn.model_selection import train_test_split
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Create sample dataframe
+    feature_names = [f'feature_{i}' for i in range(X.shape[1])]
+    df = pd.DataFrame(X, columns=feature_names)
+    df['target'] = y
+    df['age'] = np.random.randint(30, 80, len(df))
+    df['sex'] = np.random.randint(0, 2, len(df))
+    df['cp'] = np.random.randint(0, 4, len(df))
+    df['chol'] = np.random.randint(150, 350, len(df))
+    df['thalach'] = np.random.randint(100, 200, len(df))
+    
+    # Train sample models
+    rf_model = RandomForestClassifier(random_state=42)
+    lr_model = LogisticRegression(random_state=42)
+    rf_model.fit(X_train, y_train)
+    lr_model.fit(X_train, y_train)
+    
+    # Create sample results
+    results_data = [
+        {'model': 'KNN', 'accuracy': 0.70, 'precision': 0.76, 'recall': 0.78, 
+         'f1_score': 0.80, 'roc_auc': 0.67, 'execution_time': 23.44},
+        {'model': 'Logistic Regression', 'accuracy': 0.92, 'precision': 0.90, 'recall': 0.90, 
+         'f1_score': 0.92, 'roc_auc': 0.88, 'execution_time': 32.59},
+        {'model': 'Random Forest', 'accuracy': 0.80, 'precision': 0.84, 'recall': 0.82, 
+         'f1_score': 0.90, 'roc_auc': 0.79, 'execution_time': 48.95},
+        {'model': 'BDLSTM+CatBoost', 'accuracy': 0.94, 'precision': 0.93, 'recall': 0.92, 
+         'f1_score': 0.94, 'roc_auc': 0.94, 'execution_time': 8.52}
+    ]
+    
+    results_df = pd.DataFrame(results_data)
+    
+    # Initialize visualizer
+    visualizer = ResultVisualizer()
+    
+    # Test plots
+    print("Testing visualization module...")
+    
+    # 1. Data distribution
+    visualizer.plot_data_distribution(df)
+    
+    # 2. Model comparison
+    visualizer.plot_model_comparison(results_df)
+    
+    # 3. Feature importance (sample)
+    feature_importance = np.random.random(len(feature_names))
+    visualizer.plot_feature_importance(feature_importance, feature_names)
+    
+    # 4. ROC curve
+    rf_proba = rf_model.predict_proba(X_test)
+    visualizer.plot_roc_curve(y_test, rf_proba)
+    
+    # 5. Confusion matrix
+    rf_pred = rf_model.predict(X_test)
+    visualizer.plot_confusion_matrix(y_test, rf_pred)
+    
+    # 6. Interactive dashboard
+    visualizer.create_interactive_dashboard(results_df)
+    
+    print("Visualization tests completed successfully!")
