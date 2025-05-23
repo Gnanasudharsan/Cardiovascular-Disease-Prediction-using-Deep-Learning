@@ -201,19 +201,6 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📚 Citation
-
-If you use this work in your research, please cite:
-
-```bibtex
-@inproceedings{sasikala2023transforming,
-  title={Transforming Healthcare With Deep Learning: Cardiovascular Disease Prediction},
-  author={Sasikala, V and Arunarasi, J and Surya, S and Shivaanivarsha, N and Raghavendra, Guru and Gnanasudharsan, A},
-  booktitle={2023 International Conference on Ambient Intelligence, Knowledge Informatics and Industrial Electronics (AIKIIE)},
-  year={2023},
-  organization={IEEE}
-}
-```
 
 ## 🔗 Links
 
@@ -222,19 +209,3 @@ If you use this work in your research, please cite:
 - [Documentation](docs/)
 - [Issues](https://github.com/yourusername/cardiovascular-disease-prediction/issues)
 
-## 👥 Authors
-
-- **V Sasikala** - Department of ECE, Sri Sairam Engineering College
-- **J. Arunarasi** - Department of ECE, Sri Sairam Engineering College  
-- **S. Surya** - Department of ECE, Sri Sairam Engineering College
-- **N. Shivaanivarsha** - Department of ECE, Sri Sairam Engineering College
-- **Guru Raghavendra S** - Department of ECE, Sri Sairam Engineering College
-- **Gnanasudharsan A** - Department of ECE, Sri Sairam Engineering College
-
-## 📞 Contact
-
-For questions or collaborations, please reach out to [sasikala.ece@sairam.edu.in](mailto:sasikala.ece@sairam.edu.in)
-
----
-
-⭐ **Star this repository if you found it helpful!**
