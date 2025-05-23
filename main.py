@@ -3,8 +3,6 @@
 Cardiovascular Disease Prediction using Deep Learning
 Main execution script for the complete pipeline
 
-Authors: V Sasikala, J. Arunarasi, S. Surya, N. Shivaanivarsha, 
-         Guru Raghavendra S, Gnanasudharsan A
 """
 
 import os
